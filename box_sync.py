@@ -9,11 +9,14 @@ import zipfile
 
 NO_COPY = False
 BIG_FILE = 2**26
+
+# Hard code in where you would like to start your backup and where your destination
 walk_dir = "/home/mschramm/Documents/PhD"
 box_dir = "/home/mschramm/box/DEM Fiberous Particles-PhD"
 
 file_extensions = ('.liggghts', '.vtk','.restart','.bonds','.bond','.stl','.STL','forcechain')
 
+# For testing
 #walk_dir = "/home/mschramm/Programs/Box_Sync/box_sync/test"
 #box_dir = "/home/mschramm/Programs/Box_Sync/box_sync/box"
 
