@@ -11,14 +11,14 @@ NO_COPY = False
 BIG_FILE = 2**26
 
 # Hard code in where you would like to start your backup and where your destination
-walk_dir = "/home/mschramm/Documents/PhD"
-box_dir = "/home/mschramm/box/DEM Fiberous Particles-PhD"
+# walk_dir = "/home/mschramm/Documents/PhD"
+# box_dir = "/home/mschramm/box/DEM Fiberous Particles-PhD"
 
 file_extensions = ('.liggghts', '.vtk','.restart','.bonds','.bond','.stl','.STL','forcechain')
 
 # For testing
-#walk_dir = "/home/mschramm/Programs/Box_Sync/box_sync/test"
-#box_dir = "/home/mschramm/Programs/Box_Sync/box_sync/box"
+walk_dir = "/home/mschramm/Programs/Box_Sync/box_sync/test"
+box_dir = "/home/mschramm/Programs/Box_Sync/box_sync/box"
 
 # Print iterations progress
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, bar_length=50):
@@ -67,7 +67,6 @@ def get_hash(filename, block_size=4096, hash_type='md5'):
             data = f.read(block_size)
             if not data:
                 if PRINT_STATUS:
-                    # if count <= max_count:
                     printProgressBar(max_count, max_count)
                 break
             if PRINT_STATUS:
@@ -78,32 +77,6 @@ def get_hash(filename, block_size=4096, hash_type='md5'):
                     printProgressBar(count, max_count)
             hash.update(data)
     return hash.hexdigest()
-
-
-# def get_hash(filename, block_size=4096):
-# 	print('Getting hash for ' + filename)
-# 	file_size = os.path.getsize(filename)
-# 	if file_size > BIG_FILE:
-# 		PRINT_STATUS = True
-# 		count = 0
-# 		max_count = file_size/block_size + 1
-# 	else:
-# 		PRINT_STATUS = False
-# 	hash = hashlib.md5()
-# 	with open(filename, "rb") as f:
-# 		while True:
-# 			data = f.read(block_size)
-# 			if not data:
-# 				if PRINT_STATUS:
-# 					if count <= max_count:
-# 						printProgressBar(max_count, max_count)
-# 				break
-# 			if PRINT_STATUS:
-# 				count += 1
-# 				if count < max_count:
-# 					printProgressBar(count, max_count)
-# 			hash.update(data)
-# 	return hash.hexdigest()
 
 def get_box_path(box_dir,file_path):
 	file_sep = file_path.split(os.sep)
@@ -125,6 +98,37 @@ def get_last_hash(filename):
 		return last_hash_file, last_hash_value.rstrip('\r\n')
 	else:
 		return "NaN", "NaN"
+
+def delFromBox():
+	new_hash_file = open("new_box_hash.txt", "r")
+	old_hash_file = open("box_hash.txt","r")
+
+	new_hash = new_hash_file.read()
+	old_hash = old_hash_file.read()
+
+	new_hash_file.close()
+	old_hash_file.close()
+
+	new_hash = new_hash.split('\n')
+	old_hash = old_hash.split('\n')
+
+	filesRemoved = 0
+	for old in old_hash:
+		need2remove = True
+		oldf = old.split(',')
+		for new in new_hash:
+			newf = new.split(',')
+			if oldf[0] == newf[0]:
+				new_hash.remove(new)
+				need2remove = False
+				break
+		if need2remove:
+			print('Removing ' + oldf[0] + ' from box')
+			wlkSplit = walk_dir.split(os.sep)
+			os.remove(box_dir + os.sep + wlkSplit[-2] + os.sep + wlkSplit[-1] + oldf[0][len(walk_dir):])
+			filesRemoved += 1
+	print(str(filesRemoved) + ' file(s) removed')
+	return 0
 
 def copy2box(src, dst):
 	print("Copying " + src)
@@ -162,6 +166,7 @@ def in_hash_file(file_path):
 def has_updated(file_path, old_hash):
 	if len(old_hash) > 20:
 		new_hash = get_hash(file_path,hash_type='md5')
+		print("Updating hash to xxh64")
 		converted_hash = get_hash(file_path,hash_type='xxh64')
 		needsConverting = True
 	else:
@@ -169,7 +174,6 @@ def has_updated(file_path, old_hash):
 		new_hash = get_hash(file_path,hash_type='xxh64')
 	if new_hash == old_hash:
 		if needsConverting:
-			print("Updating hash to xxh64")
 			return False, converted_hash
 		else:
 			return False, new_hash
@@ -245,9 +249,11 @@ def do_update():
 					copy2box(file_path, box_path)
 					new_hash_file.write(new_string+"\n")
 					
-		print('DONE')
 		new_hash_file.write("EverythingIsFinished,1\n")
 		new_hash_file.close()
+		print("Removing missing files from box")
+		delFromBox()
+		print('DONE')
 		shutil.move("new_box_hash.txt","box_hash.txt")
 	except KeyboardInterrupt:
 		print("")
